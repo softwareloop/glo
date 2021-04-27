@@ -1,11 +1,21 @@
 package com.softwareloop.glo;
 
+import com.softwareloop.glo.model.Datafile;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.xml.sax.InputSource;
+import org.xml.sax.XMLReader;
 
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.Unmarshaller;
+import javax.xml.parsers.SAXParserFactory;
+import javax.xml.transform.sax.SAXSource;
 import java.io.IOException;
+import java.io.Reader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -21,24 +31,41 @@ public class Glo {
 
     public static boolean RENAME_ENABLED = false;
 
-    public static void main(String[] args) throws IOException {
-        if (args.length == 0) {
-            processDir(Paths.get("."));
-            return;
-        }
-        for (String arg : args) {
-            Path path = Paths.get(arg);
-            if (Files.isDirectory(path)) {
-                processDir(path);
-            } else if (Files.isRegularFile(path)) {
-                processFile(path);
-            } else {
-                log.debug("Unrecognised: " + arg);
-            }
-        }
+    //--------------------------------------------------------------------------
+    // Fields
+    //--------------------------------------------------------------------------
+
+    JAXBContext jaxbContext;
+    SAXParserFactory spf;
+
+    //--------------------------------------------------------------------------
+    // Constructor
+    //--------------------------------------------------------------------------
+
+    @SneakyThrows
+    public Glo() {
+        jaxbContext = JAXBContext.newInstance(Datafile.class);
+        spf = SAXParserFactory.newInstance();
+        spf.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
+        spf.setFeature("http://xml.org/sax/features/validation", false);
     }
 
-    private static void processFile(Path inPath) throws IOException {
+    //--------------------------------------------------------------------------
+    // Main
+    //--------------------------------------------------------------------------
+
+    public static void main(String[] args) throws IOException {
+        String datDirPath = System.getenv("DAT_DIR_PATH");
+        Path datDir = Paths.get(datDirPath);
+        Glo glo = new Glo();
+        glo.processDir(datDir);
+    }
+
+    //--------------------------------------------------------------------------
+    // Methods
+    //--------------------------------------------------------------------------
+
+    private void processFile(Path inPath) throws IOException {
         String fileName = inPath.getFileName().toString();
         if (fileName.startsWith(".")) {
             log.debug("Skipping " + fileName);
@@ -75,13 +102,27 @@ public class Glo {
         }
     }
 
-    private static void processDir(Path dirPath) throws IOException {
+    private void processDir(Path dirPath) throws IOException {
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(dirPath)) {
             for (Path path : stream) {
-                if (Files.isRegularFile(path)) {
-                    processFile(path);
+                String fileName = path.getFileName().toString();
+                String extension = FilenameUtils.getExtension(fileName);
+                if ("dat".equalsIgnoreCase(extension)) {
+                    processDat(path);
                 }
             }
+        }
+    }
+
+    @SneakyThrows
+    private void processDat(Path path) {
+        log.info("Reading: {}", path);
+        try (Reader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
+            XMLReader xmlReader = spf.newSAXParser().getXMLReader();
+            InputSource inputSource = new InputSource(reader);
+            SAXSource source = new SAXSource(xmlReader, inputSource);
+            Unmarshaller jaxbUnmarshaller = jaxbContext.createUnmarshaller();
+            Datafile datafile = (Datafile) jaxbUnmarshaller.unmarshal(source);
         }
     }
 }

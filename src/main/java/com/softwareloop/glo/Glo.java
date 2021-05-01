@@ -7,7 +7,6 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.IOException;
-import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -33,8 +32,8 @@ public class Glo {
     //--------------------------------------------------------------------------
 
     @SneakyThrows
-    public Glo() {
-        datStore = new DatStore();
+    public Glo(DatStore datStore) {
+        this.datStore = datStore;
     }
 
     //--------------------------------------------------------------------------
@@ -44,8 +43,9 @@ public class Glo {
     public static void main(String[] args) throws IOException {
         String datDirPath = System.getenv("DAT_DIR_PATH");
         Path datDir = Paths.get(datDirPath);
-        Glo glo = new Glo();
-        glo.processDir(datDir);
+        DatStore datStore = new DatStore();
+        datStore.loadDatDir(datDir);
+        Glo glo = new Glo(datStore);
     }
 
     //--------------------------------------------------------------------------
@@ -86,18 +86,6 @@ public class Glo {
             }
         } else {
             log.debug("Unmatched pattern" + fileName);
-        }
-    }
-
-    private void processDir(Path dirPath) throws IOException {
-        try (DirectoryStream<Path> stream = Files.newDirectoryStream(dirPath)) {
-            for (Path path : stream) {
-                String fileName = path.getFileName().toString();
-                String extension = FilenameUtils.getExtension(fileName);
-                if (Files.isRegularFile(path) && "dat".equalsIgnoreCase(extension)) {
-                    datStore.processDat(path);
-                }
-            }
         }
     }
 

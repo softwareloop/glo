@@ -62,7 +62,7 @@ public class DatStore {
     public void loadDatDir(Path datDir) throws IOException {
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(datDir)) {
             for (Path datFile : stream) {
-                log.info("Reading: {}", datFile);
+                log.debug("Reading: {}", datFile);
                 String fileName = datFile.getFileName().toString();
                 String extension = FilenameUtils.getExtension(fileName);
                 if (Files.isRegularFile(datFile) && "dat".equalsIgnoreCase(extension)) {
@@ -91,13 +91,13 @@ public class DatStore {
             for (Rom rom : game.getRoms()) {
                 String romMd5 = rom.getMd5();
                 if (romMd5 == null) {
-                    log.debug("md5 is null");
+                    log.trace("md5 is null, skipping");
                     continue;
                 }
                 romMd5 = romMd5.toUpperCase();
                 Matcher md5Matcher = MD5_PATTERN.matcher(romMd5);
                 if (!md5Matcher.matches()) {
-                    log.debug("md5 has invalid format");
+                    log.trace("md5 has invalid format, skipping");
                     continue;
                 }
                 RomSummary romSummary = new RomSummary();
@@ -112,6 +112,10 @@ public class DatStore {
                 }
             }
         }
+    }
+
+    public List<RomSummary> getRomSummaryByMd5(String md5) {
+        return md5Map.get(md5);
     }
 
 

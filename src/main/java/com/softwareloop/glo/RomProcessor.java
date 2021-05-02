@@ -1,6 +1,7 @@
 package com.softwareloop.glo;
 
 import com.softwareloop.glo.model.RomSummary;
+import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 
@@ -26,27 +27,50 @@ public class RomProcessor {
     //--------------------------------------------------------------------------
 
     private final DatStore datStore;
+    private final Path romDir;
+
+    private final List<String> datNames;
+    private final List<RomSummary> overrides;
+
+    @Getter
+    private boolean initialized;
 
     //--------------------------------------------------------------------------
     // Constructors
     //--------------------------------------------------------------------------
 
-    public RomProcessor(DatStore datStore) {
+    public RomProcessor(
+            DatStore datStore,
+            Path romDir
+    ) {
         this.datStore = datStore;
+        this.romDir = romDir;
+        datNames = new ArrayList<>();
+        overrides = new ArrayList<>();
+        initialized = false;
     }
 
     //--------------------------------------------------------------------------
     // Public methods
     //--------------------------------------------------------------------------
 
+    public void loadConfig() {
+        Path configDir = romDir.resolve(".glo");
+        if (!Files.isDirectory(configDir)) {
+            log.warn("Config directory .glo does not exist. Re-run with --init");
+            return;
+        }
+        initialized = true;
+    }
+
     @SneakyThrows
-    public void processDir(Path romDir, boolean dryRun) {
+    public void processDir(boolean dryRun) {
         List<Path> unmatchedRomFiles = new ArrayList<>();
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(romDir)) {
             for (Path romFile : stream) {
                 String fileName = romFile.getFileName().toString();
                 if (Files.isRegularFile(romFile) && !fileName.startsWith(".")) {
-                    boolean matched = processRom(romDir, fileName, dryRun);
+                    boolean matched = processRom(fileName, dryRun);
                     if (!matched) {
                         unmatchedRomFiles.add(romFile);
                     }
@@ -64,7 +88,6 @@ public class RomProcessor {
 
     @SneakyThrows
     private boolean processRom(
-            Path romDir,
             String fileName,
             boolean dryRun
     ) {

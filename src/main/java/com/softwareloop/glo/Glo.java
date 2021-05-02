@@ -3,6 +3,7 @@ package com.softwareloop.glo;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
@@ -24,9 +25,13 @@ public class Glo {
         log.info("Loading dat files from: {}", datDirPath);
         datStore.loadDatDir(datDir);
 
-        RomProcessor romProcessor = new RomProcessor(datStore);
         Path romDir = Paths.get(args[0]);
-        romProcessor.processDir(romDir, true);
+        if (!Files.isDirectory(romDir)) {
+            log.warn("Not a directory: {}", romDir);
+        }
+        RomProcessor romProcessor = new RomProcessor(datStore, romDir);
+        romProcessor.loadConfig();
+        romProcessor.processDir(true);
 
     }
 

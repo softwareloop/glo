@@ -1,8 +1,10 @@
 package com.softwareloop.glo;
 
-import lombok.SneakyThrows;
+import ch.qos.logback.classic.Level;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.cli.*;
+import org.apache.commons.lang3.StringUtils;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -11,7 +13,16 @@ import java.nio.file.Paths;
 
 @Slf4j
 public class Glo {
-    public static final String HELP = "help";
+
+    //--------------------------------------------------------------------------
+    // Constants
+    //--------------------------------------------------------------------------
+
+    public static final String HELP_OPTION = "help";
+    public static final String VERBOSE_OPTION = "verbose";
+    public static final String RENAME_OPTION = "rename";
+    public static final String DATDIR_OPTION = "datdir";
+    public static final String DATDIR_ENV = "DATDIR";
 
     //--------------------------------------------------------------------------
     // Main
@@ -21,19 +32,31 @@ public class Glo {
         Options options = createOptions();
         CommandLineParser parser = new DefaultParser();
         try {
-            // parse the command line arguments
             CommandLine commandLine = parser.parse(options, args);
             main(options, commandLine);
         } catch (ParseException exp) {
-            // oops, something went wrong
             log.error("Parsing failed.  Reason: {}", exp.getMessage());
         }
     }
 
-    @SneakyThrows
-    private static void main(Options options, CommandLine commandLine) {
-        if (commandLine.hasOption(HELP)) {
+    //--------------------------------------------------------------------------
+    // Private methods
+    //--------------------------------------------------------------------------
+
+    private static void main(
+            Options options,
+            CommandLine commandLine
+    ) throws IOException {
+        if (commandLine.hasOption(HELP_OPTION)) {
             help(options);
+        }
+
+        boolean verbose = commandLine.hasOption(VERBOSE_OPTION);
+        if (verbose) {
+            ch.qos.logback.classic.Logger logger =
+                    (ch.qos.logback.classic.Logger) LoggerFactory.getLogger("com.softwareloop.glo");
+            logger.setLevel(Level.DEBUG);
+            log.debug("DEBUG");
         }
 
         String[] args = commandLine.getArgs();
@@ -41,11 +64,19 @@ public class Glo {
             log.info("No game dirs provided");
             return;
         }
-        String datDirPath = System.getenv("DAT_DIR_PATH");
-        Path datDir = Paths.get(datDirPath);
+        String datDir = System.getenv(DATDIR_ENV);
+        if (commandLine.hasOption(DATDIR_OPTION)) {
+            datDir = commandLine.getOptionValue(DATDIR_OPTION);
+        }
+        if (StringUtils.isBlank(datDir)) {
+            log.error("No dat dir specified");
+        }
+        Path datDirPath = Paths.get(datDir);
         DatStore datStore = new DatStore();
-        log.info("Loading dat files from: {}", datDirPath);
-        datStore.loadDatDir(datDir);
+        log.info("Loading dat files from: {}", datDir);
+        datStore.loadDatDir(datDirPath);
+
+        boolean renameEnabled = commandLine.hasOption(RENAME_OPTION);
 
         for (String arg : args) {
             Path romDir = Paths.get(arg);
@@ -54,20 +85,16 @@ public class Glo {
             }
             RomProcessor romProcessor = new RomProcessor(datStore, romDir);
             romProcessor.loadConfig();
-            romProcessor.processDir(true);
+            romProcessor.processDir(renameEnabled);
         }
     }
 
-    //--------------------------------------------------------------------------
-    // Private methods
-    //--------------------------------------------------------------------------
-
     private static Options createOptions() {
         Options options = new Options();
-        options.addOption(HELP, "print this message");
-        options.addOption("verbose", "be extra verbose");
-        options.addOption("rename", "rename games to official name");
-        Option datdir = Option.builder("datdir")
+        options.addOption(HELP_OPTION, "print this message");
+        options.addOption(VERBOSE_OPTION, "be extra verbose");
+        options.addOption(RENAME_OPTION, "rename games to official name");
+        Option datdir = Option.builder(DATDIR_OPTION)
                               .hasArg()
                               .argName("DIR")
                               .desc("set the dat directory (overrides $DATDIR)")

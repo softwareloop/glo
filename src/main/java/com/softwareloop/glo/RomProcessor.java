@@ -64,13 +64,13 @@ public class RomProcessor {
     }
 
     @SneakyThrows
-    public void processDir(boolean dryRun) {
+    public void processDir(boolean renameEnabled) {
         List<Path> unmatchedRomFiles = new ArrayList<>();
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(romDir)) {
             for (Path romFile : stream) {
                 String fileName = romFile.getFileName().toString();
                 if (Files.isRegularFile(romFile) && !fileName.startsWith(".")) {
-                    boolean matched = processRom(fileName, dryRun);
+                    boolean matched = processRom(fileName, renameEnabled);
                     if (!matched) {
                         unmatchedRomFiles.add(romFile);
                     }
@@ -89,7 +89,7 @@ public class RomProcessor {
     @SneakyThrows
     private boolean processRom(
             String fileName,
-            boolean dryRun
+            boolean renameEnabled
     ) {
         log.debug("Processing: {}", fileName);
         Path romFile = romDir.resolve(fileName);
@@ -107,7 +107,7 @@ public class RomProcessor {
         } else {
             log.info("Renaming {} -> {}", fileName, newFileName);
             Path newRomFile = romDir.resolve(newFileName);
-            if (!dryRun) {
+            if (renameEnabled) {
                 Files.move(romFile, newRomFile);
             }
         }

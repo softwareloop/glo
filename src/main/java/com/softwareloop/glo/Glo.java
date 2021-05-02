@@ -26,7 +26,7 @@ public class Glo {
 
         RomProcessor romProcessor = new RomProcessor(datStore);
         Path romDir = Paths.get(args[0]);
-        romProcessor.processDir(romDir);
+        romProcessor.processDir(romDir, true);
 
     }
 

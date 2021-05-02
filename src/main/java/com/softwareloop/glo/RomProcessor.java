@@ -11,6 +11,7 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
+import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
@@ -39,33 +40,55 @@ public class RomProcessor {
     //--------------------------------------------------------------------------
 
     @SneakyThrows
-    public void processDir(Path romDir) {
+    public void processDir(Path romDir, boolean dryRun) {
+        List<Path> unmatchedRomFiles = new ArrayList<>();
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(romDir)) {
             for (Path romFile : stream) {
                 String fileName = romFile.getFileName().toString();
                 if (Files.isRegularFile(romFile) && !fileName.startsWith(".")) {
-                    processRom(romFile);
+                    boolean matched = processRom(romDir, fileName, dryRun);
+                    if (!matched) {
+                        unmatchedRomFiles.add(romFile);
+                    }
                 }
+            }
+        }
+        if (!unmatchedRomFiles.isEmpty()) {
+            log.info("Unmatched files:");
+            unmatchedRomFiles.sort(Path::compareTo);
+            for (Path romFile : unmatchedRomFiles) {
+                log.info(romFile.getFileName().toString());
             }
         }
     }
 
-    private void processRom(Path romFile) {
-        String fileName = romFile.getFileName().toString();
-        log.info("Processing: {}", fileName);
+    @SneakyThrows
+    private boolean processRom(
+            Path romDir,
+            String fileName,
+            boolean dryRun
+    ) {
+        log.debug("Processing: {}", fileName);
+        Path romFile = romDir.resolve(fileName);
         String md5 = computeMd5(romFile);
         List<RomSummary> romSummaries = datStore.getRomSummaryByMd5(md5);
         if (romSummaries == null) {
-            log.info("    No match found");
-            return;
+            log.debug("No match found");
+            return false;
         }
         RomSummary romSummary = romSummaries.get(0);
-        log.info("    From dat file: {}", romSummary.getDatName());
-        if (fileName.equalsIgnoreCase(romSummary.getRomName())) {
-            log.info("    Name matches dat entry");
+        log.debug("From dat file: {}", romSummary.getDatName());
+        String newFileName = romSummary.getRomName();
+        if (fileName.equalsIgnoreCase(newFileName)) {
+            log.debug("Name matches dat entry");
         } else {
-            log.info("    Renaming to: {}", romSummary.getRomName());
+            log.info("Renaming {} -> {}", fileName, newFileName);
+            Path newRomFile = romDir.resolve(newFileName);
+            if (!dryRun) {
+                Files.move(romFile, newRomFile);
+            }
         }
+        return true;
     }
 
     //--------------------------------------------------------------------------

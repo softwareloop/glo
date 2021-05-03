@@ -61,6 +61,7 @@ public class DatStore {
 
     public void loadDatDir(Path datDir) throws IOException {
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(datDir)) {
+            int nDats = 0;
             for (Path datFile : stream) {
                 log.debug("Reading: {}", datFile);
                 String fileName = datFile.getFileName().toString();
@@ -68,8 +69,10 @@ public class DatStore {
                 if (Files.isRegularFile(datFile) && "dat".equalsIgnoreCase(extension)) {
                     Datafile datafile = loadDatFile(datFile);
                     add(datafile);
+                    nDats++;
                 }
             }
+            log.info("Loaded {} dat files and {} entries", nDats, md5Map.size());
         }
     }
 

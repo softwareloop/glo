@@ -61,7 +61,7 @@ public class Glo {
 
         String[] args = commandLine.getArgs();
         if (args.length == 0) {
-            log.info("No game dirs provided");
+            log.info("No rom dirs provided");
             return;
         }
         String datDir = System.getenv(DATDIR_ENV);
@@ -76,16 +76,18 @@ public class Glo {
         log.info("Loading dat files from: {}", datDir);
         datStore.loadDatDir(datDirPath);
 
+        RomProcessor romProcessor = new RomProcessor(datStore);
         boolean renameEnabled = commandLine.hasOption(RENAME_OPTION);
+        romProcessor.setRenameEnabled(renameEnabled);
 
         for (String arg : args) {
             Path romDir = Paths.get(arg);
             if (!Files.isDirectory(romDir)) {
                 log.warn("Not a directory: {}", romDir);
+                continue;
             }
-            RomProcessor romProcessor = new RomProcessor(datStore, romDir);
-            romProcessor.loadConfig();
-            romProcessor.processDir(renameEnabled);
+            log.info("\nProcessing rom dir: {}", arg);
+            romProcessor.processDir(romDir);
         }
     }
 
@@ -93,7 +95,7 @@ public class Glo {
         Options options = new Options();
         options.addOption(HELP_OPTION, "print this message");
         options.addOption(VERBOSE_OPTION, "be extra verbose");
-        options.addOption(RENAME_OPTION, "rename games to official name");
+        options.addOption(RENAME_OPTION, "rename roms to official name");
         Option datdir = Option.builder(DATDIR_OPTION)
                               .hasArg()
                               .argName("DIR")
@@ -105,7 +107,7 @@ public class Glo {
 
     private static void help(Options options) {
         HelpFormatter formatter = new HelpFormatter();
-        formatter.printHelp("glo.sh [OPTION]... [GAMEDIR]...", options);
+        formatter.printHelp("glo.sh [OPTION]... [ROMDIR]...", options);
     }
 
 }

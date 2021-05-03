@@ -2,6 +2,7 @@ package com.softwareloop.glo;
 
 import com.softwareloop.glo.model.RomSummary;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 
@@ -13,7 +14,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Slf4j
 public class RomProcessor {
@@ -27,71 +30,55 @@ public class RomProcessor {
     //--------------------------------------------------------------------------
 
     private final DatStore datStore;
-    private final Path romDir;
-
-    private final List<String> datNames;
-    private final List<RomSummary> overrides;
 
     @Getter
-    private boolean initialized;
+    @Setter
+    boolean renameEnabled;
 
     //--------------------------------------------------------------------------
     // Constructors
     //--------------------------------------------------------------------------
 
-    public RomProcessor(
-            DatStore datStore,
-            Path romDir
-    ) {
+    public RomProcessor(DatStore datStore) {
         this.datStore = datStore;
-        this.romDir = romDir;
-        datNames = new ArrayList<>();
-        overrides = new ArrayList<>();
-        initialized = false;
     }
 
     //--------------------------------------------------------------------------
     // Public methods
     //--------------------------------------------------------------------------
 
-    public void loadConfig() {
-        Path configDir = romDir.resolve(".glo");
-        if (!Files.isDirectory(configDir)) {
-            log.warn("Config directory .glo does not exist. Re-run with --init");
-            return;
-        }
-        initialized = true;
-    }
-
     @SneakyThrows
-    public void processDir(boolean renameEnabled) {
-        List<Path> unmatchedRomFiles = new ArrayList<>();
+    public void processDir(Path romDir) {
+        List<String> unmatched = new ArrayList<>();
+        List<String> fileNames = new ArrayList<>();
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(romDir)) {
             for (Path romFile : stream) {
                 String fileName = romFile.getFileName().toString();
                 if (Files.isRegularFile(romFile) && !fileName.startsWith(".")) {
-                    boolean matched = processRom(fileName, renameEnabled);
-                    if (!matched) {
-                        unmatchedRomFiles.add(romFile);
-                    }
+                    fileNames.add(fileName);
                 }
             }
         }
-        if (!unmatchedRomFiles.isEmpty()) {
+        fileNames.sort(String::compareToIgnoreCase);
+        for (String fileName : fileNames) {
+            boolean matched = processRom(romDir, fileName);
+            if (!matched) {
+                unmatched.add(fileName);
+            }
+        }
+        if (!unmatched.isEmpty()) {
             log.info("Unmatched files:");
-            unmatchedRomFiles.sort(Path::compareTo);
-            for (Path romFile : unmatchedRomFiles) {
-                log.info(romFile.getFileName().toString());
+            for (String romFile : unmatched) {
+                log.info(romFile);
             }
         }
     }
 
     @SneakyThrows
     private boolean processRom(
-            String fileName,
-            boolean renameEnabled
+            Path romDir,
+            String fileName
     ) {
-        log.debug("Processing: {}", fileName);
         Path romFile = romDir.resolve(fileName);
         String md5 = computeMd5(romFile);
         List<RomSummary> romSummaries = datStore.getRomSummaryByMd5(md5);
@@ -99,16 +86,37 @@ public class RomProcessor {
             log.debug("No match found");
             return false;
         }
-        RomSummary romSummary = romSummaries.get(0);
-        log.debug("From dat file: {}", romSummary.getDatName());
-        String newFileName = romSummary.getRomName();
-        if (fileName.equalsIgnoreCase(newFileName)) {
-            log.debug("Name matches dat entry");
+        if (renameEnabled) {
+            Set<String> newFileNames = new HashSet<>();
+            for (RomSummary romSummary : romSummaries) {
+                String newFileName = romSummary.getRomName();
+                newFileNames.add(newFileName);
+            }
+            if (newFileNames.size() == 1) {
+                String newFileName = newFileNames.iterator().next();
+                if (fileName.equals(newFileName)) {
+                    log.debug("Name matches dat entry: {}", fileName);
+                } else {
+                    log.info("Renaming {} -> {}", fileName, newFileName);
+                    Path newRomFile = romDir.resolve(newFileName);
+                    Files.move(romFile, newRomFile);
+                }
+            } else {
+                if (newFileNames.contains(fileName)) {
+                    log.debug("Name matches dat entry: {}", fileName);
+                } else {
+                    log.info("Skipping {} - multiple matching rom names:", fileName);
+                    for (RomSummary romSummary : romSummaries) {
+                        String newFileName = romSummary.getRomName();
+                        log.info("    {} [{}]", newFileName, romSummary.getDatName());
+                    }
+                }
+            }
         } else {
-            log.info("Renaming {} -> {}", fileName, newFileName);
-            Path newRomFile = romDir.resolve(newFileName);
-            if (renameEnabled) {
-                Files.move(romFile, newRomFile);
+            log.info(fileName);
+            for (RomSummary romSummary : romSummaries) {
+                String newFileName = romSummary.getRomName();
+                log.info("    {} [{}]", newFileName, romSummary.getDatName());
             }
         }
         return true;

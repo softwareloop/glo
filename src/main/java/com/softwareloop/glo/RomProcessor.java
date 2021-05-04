@@ -36,6 +36,15 @@ public class RomProcessor {
     @Setter
     boolean renameEnabled;
 
+    @Getter
+    private int nProcessedFiles;
+    @Getter
+    private int nMatchedFiles;
+    @Getter
+    private int nUnmatchedFiles;
+    @Getter
+    private int nRenamedFiles;
+
     //--------------------------------------------------------------------------
     // Constructors
     //--------------------------------------------------------------------------
@@ -80,13 +89,16 @@ public class RomProcessor {
             Path romDir,
             String fileName
     ) {
+        nProcessedFiles++;
         Path romFile = romDir.resolve(fileName);
         String md5 = computeMd5(romFile);
         List<RomSummary> romSummaries = datStore.getRomSummaryByMd5(md5);
         if (romSummaries == null) {
             log.debug("No match found");
+            nUnmatchedFiles++;
             return false;
         }
+        nMatchedFiles++;
         if (renameEnabled) {
             Set<String> newFileNames = new HashSet<>();
             for (RomSummary romSummary : romSummaries) {
@@ -101,6 +113,7 @@ public class RomProcessor {
                     log.info("Renaming {} -> {}", fileName, newFileName);
                     Path newRomFile = romDir.resolve(newFileName);
                     Files.move(romFile, newRomFile, StandardCopyOption.REPLACE_EXISTING);
+                    nRenamedFiles++;
                 }
             } else {
                 if (newFileNames.contains(fileName)) {
@@ -141,4 +154,11 @@ public class RomProcessor {
         }
     }
 
+    public void printStats() {
+        log.info("\nFile stats:");
+        log.info("Processed: {}", nProcessedFiles);
+        log.info("Matched  : {}", nMatchedFiles);
+        log.info("Unmatched: {}", nUnmatchedFiles);
+        log.info("Renamed  : {}", nRenamedFiles);
+    }
 }

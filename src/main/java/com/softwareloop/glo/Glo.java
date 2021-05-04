@@ -90,6 +90,7 @@ public class Glo {
             log.info("\nProcessing rom dir: {}", arg);
             romProcessor.processDir(romDir);
         }
+        romProcessor.printStats();
     }
 
     private static Options createOptions() {

@@ -49,6 +49,7 @@ public class Glo {
     ) throws IOException {
         if (commandLine.hasOption(HELP_OPTION)) {
             help(options);
+            return;
         }
 
         boolean verbose = commandLine.hasOption(VERBOSE_OPTION);
@@ -93,7 +94,7 @@ public class Glo {
 
     private static Options createOptions() {
         Options options = new Options();
-        options.addOption(HELP_OPTION, "print this message");
+        options.addOption(HELP_OPTION, "print this usage information");
         options.addOption(VERBOSE_OPTION, "be extra verbose");
         options.addOption(RENAME_OPTION, "rename roms to official name");
         Option datdir = Option.builder(DATDIR_OPTION)

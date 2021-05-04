@@ -12,6 +12,7 @@ import java.io.InputStream;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -99,7 +100,7 @@ public class RomProcessor {
                 } else {
                     log.info("Renaming {} -> {}", fileName, newFileName);
                     Path newRomFile = romDir.resolve(newFileName);
-                    Files.move(romFile, newRomFile);
+                    Files.move(romFile, newRomFile, StandardCopyOption.REPLACE_EXISTING);
                 }
             } else {
                 if (newFileNames.contains(fileName)) {

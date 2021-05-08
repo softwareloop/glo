@@ -1,17 +1,13 @@
 package com.softwareloop.glo;
 
-import ch.qos.logback.classic.Level;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.cli.*;
 import org.apache.commons.lang3.StringUtils;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-@Slf4j
 public class Glo {
 
     //--------------------------------------------------------------------------
@@ -35,7 +31,7 @@ public class Glo {
             CommandLine commandLine = parser.parse(options, args);
             main(options, commandLine);
         } catch (ParseException exp) {
-            log.error("Parsing failed.  Reason: {}", exp.getMessage());
+            Log.info("Parsing failed.  Reason: {}", exp.getMessage());
         }
     }
 
@@ -54,15 +50,12 @@ public class Glo {
 
         boolean verbose = commandLine.hasOption(VERBOSE_OPTION);
         if (verbose) {
-            ch.qos.logback.classic.Logger logger =
-                    (ch.qos.logback.classic.Logger) LoggerFactory.getLogger("com.softwareloop.glo");
-            logger.setLevel(Level.DEBUG);
-            log.debug("DEBUG");
+            Log.setVerbose(true);
         }
 
         String[] args = commandLine.getArgs();
         if (args.length == 0) {
-            log.info("No rom dirs provided");
+            Log.info("No rom dirs provided");
             return;
         }
         String datDir = System.getenv(DATDIR_ENV);
@@ -70,11 +63,11 @@ public class Glo {
             datDir = commandLine.getOptionValue(DATDIR_OPTION);
         }
         if (StringUtils.isBlank(datDir)) {
-            log.error("No dat dir specified");
+            Log.info("No dat dir specified");
         }
         Path datDirPath = Paths.get(datDir);
         DatStore datStore = new DatStore();
-        log.info("Loading dat files from: {}", datDir);
+        Log.info("Loading dat files from: %s", datDir);
         datStore.loadDatDir(datDirPath);
 
         RomProcessor romProcessor = new RomProcessor(datStore);
@@ -84,10 +77,10 @@ public class Glo {
         for (String arg : args) {
             Path romDir = Paths.get(arg);
             if (!Files.isDirectory(romDir)) {
-                log.warn("Not a directory: {}", romDir);
+                Log.info("Not a directory: %s", romDir);
                 continue;
             }
-            log.info("\nProcessing rom dir: {}", arg);
+            Log.info("\nProcessing rom dir: %s", arg);
             romProcessor.processDir(romDir);
         }
         romProcessor.printStats();

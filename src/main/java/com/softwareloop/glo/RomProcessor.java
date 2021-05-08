@@ -4,7 +4,6 @@ import com.softwareloop.glo.model.RomSummary;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.SneakyThrows;
-import lombok.extern.slf4j.Slf4j;
 
 import javax.xml.bind.DatatypeConverter;
 import java.io.BufferedInputStream;
@@ -19,7 +18,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-@Slf4j
 public class RomProcessor {
 
     //--------------------------------------------------------------------------
@@ -77,9 +75,9 @@ public class RomProcessor {
             }
         }
         if (!unmatched.isEmpty()) {
-            log.info("Unmatched files:");
+            Log.info("Unmatched files:");
             for (String romFile : unmatched) {
-                log.info(romFile);
+                Log.info(romFile);
             }
         }
     }
@@ -94,7 +92,7 @@ public class RomProcessor {
         String md5 = computeMd5(romFile);
         List<RomSummary> romSummaries = datStore.getRomSummaryByMd5(md5);
         if (romSummaries == null) {
-            log.debug("No match found");
+            Log.debug("No match found");
             nUnmatchedFiles++;
             return false;
         }
@@ -108,29 +106,29 @@ public class RomProcessor {
             if (newFileNames.size() == 1) {
                 String newFileName = newFileNames.iterator().next();
                 if (fileName.equals(newFileName)) {
-                    log.debug("Name matches dat entry: {}", fileName);
+                    Log.debug("Name matches dat entry: {}", fileName);
                 } else {
-                    log.info("Renaming {} -> {}", fileName, newFileName);
+                    Log.info("Renaming {} -> {}", fileName, newFileName);
                     Path newRomFile = romDir.resolve(newFileName);
                     Files.move(romFile, newRomFile, StandardCopyOption.REPLACE_EXISTING);
                     nRenamedFiles++;
                 }
             } else {
                 if (newFileNames.contains(fileName)) {
-                    log.debug("Name matches dat entry: {}", fileName);
+                    Log.debug("Name matches dat entry: {}", fileName);
                 } else {
-                    log.info("Skipping {} - multiple matching rom names:", fileName);
+                    Log.info("Skipping {} - multiple matching rom names:", fileName);
                     for (RomSummary romSummary : romSummaries) {
                         String newFileName = romSummary.getRomName();
-                        log.info("    {} [{}]", newFileName, romSummary.getDatName());
+                        Log.info("    {} [{}]", newFileName, romSummary.getDatName());
                     }
                 }
             }
         } else {
-            log.info(fileName);
+            Log.info(fileName);
             for (RomSummary romSummary : romSummaries) {
                 String newFileName = romSummary.getRomName();
-                log.info("    {} [{}]", newFileName, romSummary.getDatName());
+                Log.info("    {} [{}]", newFileName, romSummary.getDatName());
             }
         }
         return true;
@@ -155,10 +153,10 @@ public class RomProcessor {
     }
 
     public void printStats() {
-        log.info("\nFile stats:");
-        log.info("Processed: {}", nProcessedFiles);
-        log.info("Matched  : {}", nMatchedFiles);
-        log.info("Unmatched: {}", nUnmatchedFiles);
-        log.info("Renamed  : {}", nRenamedFiles);
+        Log.info("\nFile stats:");
+        Log.info("Processed: {}", nProcessedFiles);
+        Log.info("Matched  : {}", nMatchedFiles);
+        Log.info("Unmatched: {}", nUnmatchedFiles);
+        Log.info("Renamed  : {}", nRenamedFiles);
     }
 }

@@ -2,7 +2,6 @@ package com.softwareloop.glo;
 
 import com.softwareloop.glo.model.*;
 import lombok.SneakyThrows;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FilenameUtils;
 import org.xml.sax.InputSource;
 import org.xml.sax.XMLReader;
@@ -24,7 +23,6 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-@Slf4j
 public class DatStore {
 
     //--------------------------------------------------------------------------
@@ -63,7 +61,7 @@ public class DatStore {
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(datDir)) {
             int nDats = 0;
             for (Path datFile : stream) {
-                log.debug("Reading: {}", datFile);
+                Log.debug("Reading: %s", datFile);
                 String fileName = datFile.getFileName().toString();
                 String extension = FilenameUtils.getExtension(fileName);
                 if (Files.isRegularFile(datFile) && "dat".equalsIgnoreCase(extension)) {
@@ -72,7 +70,7 @@ public class DatStore {
                     nDats++;
                 }
             }
-            log.info("Loaded {} dat files and {} entries", nDats, md5Map.size());
+            Log.info("Loaded %d dat files and %d entries", nDats, md5Map.size());
         }
     }
 
@@ -94,13 +92,13 @@ public class DatStore {
             for (Rom rom : game.getRoms()) {
                 String romMd5 = rom.getMd5();
                 if (romMd5 == null) {
-                    log.trace("md5 is null, skipping");
+                    Log.debug("md5 is null, skipping");
                     continue;
                 }
                 romMd5 = romMd5.toUpperCase();
                 Matcher md5Matcher = MD5_PATTERN.matcher(romMd5);
                 if (!md5Matcher.matches()) {
-                    log.trace("md5 has invalid format, skipping");
+                    Log.debug("md5 has invalid format, skipping");
                     continue;
                 }
                 RomSummary romSummary = new RomSummary();

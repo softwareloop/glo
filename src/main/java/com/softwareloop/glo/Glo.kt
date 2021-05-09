@@ -2,50 +2,53 @@ package com.softwareloop.glo
 
 import org.apache.commons.cli.*
 import org.apache.commons.lang3.StringUtils
-import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Paths
 
-object Glo {
+//--------------------------------------------------------------------------
+// Constants
+//--------------------------------------------------------------------------
+
+const val HELP_OPTION = "help"
+const val VERBOSE_OPTION = "verbose"
+const val RENAME_OPTION = "rename"
+const val DATDIR_OPTION = "datdir"
+const val DATDIR_ENV = "DATDIR"
+
+class Glo {
+
+    val options: Options
+
+    init {
+        options = Options()
+        options.addOption(HELP_OPTION, "print this usage information")
+        options.addOption(VERBOSE_OPTION, "be extra verbose")
+        options.addOption(RENAME_OPTION, "rename roms to official name")
+        val datdir = Option.builder(DATDIR_OPTION)
+            .hasArg()
+            .argName("DIR")
+            .desc("set the dat directory (overrides \$DATDIR)")
+            .build()
+        options.addOption(datdir)
+    }
 
     //--------------------------------------------------------------------------
-    // Constants
+    // Public methods
     //--------------------------------------------------------------------------
 
-    const val HELP_OPTION = "help"
-    const val VERBOSE_OPTION = "verbose"
-    const val RENAME_OPTION = "rename"
-    const val DATDIR_OPTION = "datdir"
-    const val DATDIR_ENV = "DATDIR"
-
-    //--------------------------------------------------------------------------
-    // Main
-    //--------------------------------------------------------------------------
-
-    @JvmStatic
-    @Throws(IOException::class)
-    fun main(args: Array<String>) {
-        val options = createOptions()
-        val parser: CommandLineParser = DefaultParser()
+    fun run(args: Array<String>) {
         try {
+            val parser = DefaultParser()
             val commandLine = parser.parse(options, args)
-            main(options, commandLine)
+            run(commandLine)
         } catch (exp: ParseException) {
             Log.info("Parsing failed.  Reason: {}", exp.message!!)
         }
     }
 
-    //--------------------------------------------------------------------------
-    // Private methods
-    //--------------------------------------------------------------------------
-
-    @Throws(IOException::class)
-    private fun main(
-        options: Options,
-        commandLine: CommandLine
-    ) {
+    fun run(commandLine: CommandLine) {
         if (commandLine.hasOption(HELP_OPTION)) {
-            help(options)
+            help()
             return
         }
         val verbose = commandLine.hasOption(VERBOSE_OPTION)
@@ -83,23 +86,20 @@ object Glo {
         romProcessor.printStats()
     }
 
-    private fun createOptions(): Options {
-        val options = Options()
-        options.addOption(HELP_OPTION, "print this usage information")
-        options.addOption(VERBOSE_OPTION, "be extra verbose")
-        options.addOption(RENAME_OPTION, "rename roms to official name")
-        val datdir = Option.builder(DATDIR_OPTION)
-            .hasArg()
-            .argName("DIR")
-            .desc("set the dat directory (overrides \$DATDIR)")
-            .build()
-        options.addOption(datdir)
-        return options
-    }
-
-    private fun help(options: Options) {
+    fun help() {
         val formatter = HelpFormatter()
         formatter.printHelp("glo.sh [OPTION]... [ROMDIR]...", options)
     }
 
 }
+
+//--------------------------------------------------------------------------
+// Main
+//--------------------------------------------------------------------------
+
+fun main(args: Array<String>) {
+    val glo = Glo()
+    glo.run(args)
+}
+
+

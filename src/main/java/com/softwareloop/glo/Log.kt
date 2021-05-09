@@ -22,7 +22,7 @@ object Log {
     //--------------------------------------------------------------------------
 
     private fun log(fmt: String, vararg args: Any?) {
-        System.out.println(fmt.format(*args))
+        println(fmt.format(*args))
     }
 
 }

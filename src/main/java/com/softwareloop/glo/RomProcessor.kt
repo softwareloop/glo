@@ -105,9 +105,9 @@ class RomProcessor(private val datStore: DatStore) {
     private fun computeMd5(romFile: Path): String {
         val md = MessageDigest.getInstance("MD5")
         val buffer = ByteArray(1024)
-        BufferedInputStream(Files.newInputStream(romFile)).use { `is` ->
+        BufferedInputStream(Files.newInputStream(romFile)).use { inputStream ->
             var len: Int
-            while (`is`.read(buffer).also { len = it } > 0) {
+            while (inputStream.read(buffer).also { len = it } > 0) {
                 md.update(buffer, 0, len)
             }
             val digest = md.digest()

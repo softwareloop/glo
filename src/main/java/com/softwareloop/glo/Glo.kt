@@ -82,6 +82,7 @@ object Glo {
             Log.info("\nProcessing rom dir: %s", arg)
             romProcessor.processDir(romDir)
         }
+        romProcessor.printUnmatched()
         romProcessor.printStats()
     }
 

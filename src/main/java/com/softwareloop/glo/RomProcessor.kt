@@ -1,6 +1,8 @@
 package com.softwareloop.glo
 
+import org.apache.commons.io.FilenameUtils
 import java.io.BufferedInputStream
+import java.nio.file.FileSystems
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
@@ -8,13 +10,14 @@ import java.security.MessageDigest
 import java.util.*
 import javax.xml.bind.DatatypeConverter
 
+
 class RomProcessor(private val datStore: DatStore) {
 
     var renameEnabled = false
 
+    private val matchedFiles: MutableList<String> = ArrayList()
+    private val unmatchedFiles: MutableList<String> = ArrayList()
     private var nProcessedFiles = 0
-    private var nMatchedFiles = 0
-    private var nUnmatchedFiles = 0
     private var nRenamedFiles = 0
 
     //--------------------------------------------------------------------------
@@ -22,7 +25,6 @@ class RomProcessor(private val datStore: DatStore) {
     //--------------------------------------------------------------------------
 
     fun processDir(romDir: Path) {
-        val unmatched: MutableList<String> = ArrayList()
         val fileNames: MutableList<String> = ArrayList()
         Files.newDirectoryStream(romDir).use { stream ->
             for (romFile in stream) {
@@ -34,17 +36,34 @@ class RomProcessor(private val datStore: DatStore) {
         }
         fileNames.sortWith { obj: String, str: String? -> obj.compareTo(str!!, ignoreCase = true) }
         for (fileName in fileNames) {
-            val matched = processRom(romDir, fileName)
-            if (!matched) {
-                unmatched.add(fileName)
+            val fileExtension = FilenameUtils.getExtension(fileName).lowercase()
+            val matched: Boolean
+            if ("zip".equals(fileExtension)) {
+                matched = processZip(romDir, fileName)
+            } else {
+                matched = processRom(romDir, fileName)
+            }
+            if (matched) {
+                matchedFiles.add(fileName)
+            } else {
+                unmatchedFiles.add(fileName)
             }
         }
-        if (!unmatched.isEmpty()) {
-            Log.info("Unmatched files:")
-            for (romFile in unmatched) {
-                Log.info(romFile)
-            }
+    }
+
+    private fun processZip(
+        romDir: Path,
+        zipName: String
+    ): Boolean {
+        val zipFile = romDir.resolve(zipName)
+        Log.info("Processing zip file: %s", zipName)
+        val fs = FileSystems.newFileSystem(zipFile, ClassLoader.getSystemClassLoader())
+        val zipRomProcessor = RomProcessor(datStore)
+        for (rootDirectory in fs.rootDirectories) {
+            zipRomProcessor.processDir(rootDirectory)
+            zipRomProcessor.printStats()
         }
+        return false
     }
 
     private fun processRom(
@@ -57,14 +76,12 @@ class RomProcessor(private val datStore: DatStore) {
         val romSummaries = datStore.getRomSummaryByMd5(md5)
         if (romSummaries == null) {
             Log.debug("No match found")
-            nUnmatchedFiles++
             return false
         }
-        nMatchedFiles++
         if (renameEnabled) {
             val newFileNames: MutableSet<String> = HashSet()
             for (romSummary in romSummaries) {
-                val newFileName = romSummary.romName ?: continue
+                val newFileName = romSummary.romName
                 newFileNames.add(newFileName)
             }
             if (newFileNames.size == 1) {
@@ -98,6 +115,25 @@ class RomProcessor(private val datStore: DatStore) {
         return true
     }
 
+    fun printUnmatched() {
+        Log.info("\nUnmatched files:")
+        if (unmatchedFiles.isEmpty()) {
+            Log.info("No unmatched files")
+        } else {
+            for (romFile in unmatchedFiles) {
+                Log.info(romFile)
+            }
+        }
+    }
+
+    fun printStats() {
+        Log.info("\nFile stats:")
+        Log.info("Processed: %s", nProcessedFiles)
+        Log.info("Matched  : %s", matchedFiles.size)
+        Log.info("Unmatched: %s", unmatchedFiles.size)
+        Log.info("Renamed  : %s", nRenamedFiles)
+    }
+
     //--------------------------------------------------------------------------
     // Private methods
     //--------------------------------------------------------------------------
@@ -113,14 +149,6 @@ class RomProcessor(private val datStore: DatStore) {
             val digest = md.digest()
             return DatatypeConverter.printHexBinary(digest).uppercase(Locale.getDefault())
         }
-    }
-
-    fun printStats() {
-        Log.info("\nFile stats:")
-        Log.info("Processed: %s", nProcessedFiles)
-        Log.info("Matched  : %s", nMatchedFiles)
-        Log.info("Unmatched: %s", nUnmatchedFiles)
-        Log.info("Renamed  : %s", nRenamedFiles)
     }
 
 }

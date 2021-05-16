@@ -4,7 +4,6 @@ import com.softwareloop.glo.model.Datafile
 import com.softwareloop.glo.model.RomSummary
 import org.apache.commons.io.FilenameUtils
 import org.xml.sax.InputSource
-import java.io.IOException
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
@@ -22,33 +21,24 @@ class DatStore {
 
     companion object {
         val MD5_PATTERN: Pattern = Pattern.compile("[A-F0-9]{32}")
+        val ROM_NAME_ILLEGAL_PATTERN: Pattern = Pattern.compile("[/\\\\]")
+        val jaxbContext: JAXBContext = JAXBContext.newInstance(Datafile::class.java)
+        val spf: SAXParserFactory = SAXParserFactory.newInstance().apply {
+            setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false)
+            setFeature("http://xml.org/sax/features/validation", false)
+        }
     }
 
     //--------------------------------------------------------------------------
     // Fields
     //--------------------------------------------------------------------------
 
-    private val jaxbContext: JAXBContext
-    private val spf: SAXParserFactory
-    private val md5Map: MutableMap<String, MutableList<RomSummary>>
-
-    //--------------------------------------------------------------------------
-    // Constructor
-    //--------------------------------------------------------------------------
-
-    init {
-        jaxbContext = JAXBContext.newInstance(Datafile::class.java)
-        spf = SAXParserFactory.newInstance()
-        spf.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false)
-        spf.setFeature("http://xml.org/sax/features/validation", false)
-        md5Map = HashMap()
-    }
+    val md5Map = HashMap<String, MutableList<RomSummary>>()
 
     //--------------------------------------------------------------------------
     // Public methods
     //--------------------------------------------------------------------------
 
-    @Throws(IOException::class)
     fun loadDatDir(datDir: Path) {
         Files.newDirectoryStream(datDir).use { stream ->
             var nDats = 0
@@ -78,11 +68,16 @@ class DatStore {
 
     fun add(datafile: Datafile) {
         val header = datafile.header ?: return
-        val datName = header.name
+        val datName = header.name ?: return
         val games = datafile.games ?: return
         for (game in games) {
             val roms = game.roms ?: return
             for (rom in roms) {
+                val romName = rom.name ?: continue
+                val romNameMatcher = ROM_NAME_ILLEGAL_PATTERN.matcher(romName)
+                if (romNameMatcher.find()) {
+                    Log.debug("Rom name '%s'contains illegal characters, skipping.", romName)
+                }
                 var romMd5 = rom.md5
                 if (romMd5 == null) {
                     Log.debug("md5 is null, skipping")
@@ -94,11 +89,7 @@ class DatStore {
                     Log.debug("md5 has invalid format, skipping")
                     continue
                 }
-                val romSummary = RomSummary()
-                romSummary.datName = datName
-                romSummary.romName = rom.name
-                romSummary.romSize = rom.size
-                romSummary.romMd5 = romMd5
+                val romSummary = RomSummary(datName, romName)
                 val romSummaries = md5Map.computeIfAbsent(romMd5) { k: String? -> ArrayList() }
                 if (!romSummaries.contains(romSummary)) {
                     romSummaries.add(romSummary)

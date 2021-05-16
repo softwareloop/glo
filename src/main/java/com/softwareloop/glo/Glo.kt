@@ -5,31 +5,28 @@ import org.apache.commons.lang3.StringUtils
 import java.nio.file.Files
 import java.nio.file.Paths
 
-//--------------------------------------------------------------------------
-// Constants
-//--------------------------------------------------------------------------
+object Glo {
 
-const val HELP_OPTION = "help"
-const val VERBOSE_OPTION = "verbose"
-const val RENAME_OPTION = "rename"
-const val DATDIR_OPTION = "datdir"
-const val DATDIR_ENV = "DATDIR"
+    //--------------------------------------------------------------------------
+    // Constants
+    //--------------------------------------------------------------------------
 
-class Glo {
+    const val HELP_OPTION = "help"
+    const val VERBOSE_OPTION = "verbose"
+    const val RENAME_OPTION = "rename"
+    const val DATDIR_OPTION = "datdir"
+    const val DATDIR_ENV = "DATDIR"
 
-    val options: Options
-
-    init {
-        options = Options()
-        options.addOption(HELP_OPTION, "print this usage information")
-        options.addOption(VERBOSE_OPTION, "be extra verbose")
-        options.addOption(RENAME_OPTION, "rename roms to official name")
+    val options = Options().apply {
+        addOption(HELP_OPTION, "print this usage information")
+        addOption(VERBOSE_OPTION, "be extra verbose")
+        addOption(RENAME_OPTION, "rename roms to official name")
         val datdir = Option.builder(DATDIR_OPTION)
             .hasArg()
             .argName("DIR")
             .desc("set the dat directory (overrides \$DATDIR)")
             .build()
-        options.addOption(datdir)
+        addOption(datdir)
     }
 
     //--------------------------------------------------------------------------
@@ -55,11 +52,6 @@ class Glo {
         if (verbose) {
             Log.verbose = true
         }
-        val args = commandLine.args
-        if (args.isEmpty()) {
-            Log.info("No rom dirs provided")
-            return
-        }
         var datDir = System.getenv(DATDIR_ENV)
         if (commandLine.hasOption(DATDIR_OPTION)) {
             datDir = commandLine.getOptionValue(DATDIR_OPTION)
@@ -74,6 +66,13 @@ class Glo {
         val romProcessor = RomProcessor(datStore)
         val renameEnabled = commandLine.hasOption(RENAME_OPTION)
         romProcessor.renameEnabled = renameEnabled
+
+        val args = commandLine.args
+        if (args.isEmpty()) {
+            Log.info("No rom dirs provided")
+            return
+        }
+
         for (arg in args) {
             val romDir = Paths.get(arg)
             if (!Files.isDirectory(romDir)) {
@@ -91,15 +90,16 @@ class Glo {
         formatter.printHelp("glo.sh [OPTION]... [ROMDIR]...", options)
     }
 
+    //--------------------------------------------------------------------------
+    // Main
+    //--------------------------------------------------------------------------
+
+    @JvmStatic
+    fun main(args: Array<String>) {
+        run(args)
+    }
 }
 
-//--------------------------------------------------------------------------
-// Main
-//--------------------------------------------------------------------------
 
-fun main(args: Array<String>) {
-    val glo = Glo()
-    glo.run(args)
-}
 
 

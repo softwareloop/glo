@@ -1,5 +1,6 @@
 package com.softwareloop.glo
 
+import com.softwareloop.glo.model.RomSummary
 import org.apache.commons.io.FilenameUtils
 import java.io.BufferedInputStream
 import java.nio.file.FileSystems
@@ -12,6 +13,14 @@ import javax.xml.bind.DatatypeConverter
 
 
 class RomProcessor(private val datStore: DatStore) {
+
+    companion object {
+        val inesStart = byteArrayOf(0x4E, 0x45, 0x53, 0x1A)
+    }
+
+    //--------------------------------------------------------------------------
+    // Properties
+    //--------------------------------------------------------------------------
 
     var renameEnabled = false
 
@@ -72,8 +81,14 @@ class RomProcessor(private val datStore: DatStore) {
     ): Boolean {
         nProcessedFiles++
         val romFile = romDir.resolve(fileName)
-        val md5 = computeMd5(romFile)
-        val romSummaries = datStore.getRomSummaryByMd5(md5)
+        val md5s = computeMd5s(romFile)
+        var romSummaries: List<RomSummary>? = null
+        for (md5 in md5s) {
+            romSummaries = datStore.getRomSummaryByMd5(md5)
+            if (romSummaries != null) {
+                break
+            }
+        }
         if (romSummaries == null) {
             Log.debug("No match found")
             return false
@@ -138,17 +153,38 @@ class RomProcessor(private val datStore: DatStore) {
     // Private methods
     //--------------------------------------------------------------------------
 
-    private fun computeMd5(romFile: Path): String {
-        val md = MessageDigest.getInstance("MD5")
+    private fun computeMd5s(romFile: Path): List<String> {
+        val fullMd = MessageDigest.getInstance("MD5")
+        val headerlessMd = MessageDigest.getInstance("MD5")
         val buffer = ByteArray(1024)
         BufferedInputStream(Files.newInputStream(romFile)).use { inputStream ->
-            var len: Int
-            while (inputStream.read(buffer).also { len = it } > 0) {
-                md.update(buffer, 0, len)
+            // read the header
+            var len = inputStream.read(buffer)
+            var headerLength = detectHeaderLength(buffer)
+            while (len > 0) {
+                fullMd.update(buffer, 0, len)
+                headerlessMd.update(buffer, headerLength, len - headerLength)
+                headerLength = 0
+                len = inputStream.read(buffer)
             }
-            val digest = md.digest()
-            return DatatypeConverter.printHexBinary(digest).uppercase(Locale.getDefault())
+            val result = ArrayList<String>()
+            result.add(getStringDigest(fullMd))
+            result.add(getStringDigest(headerlessMd))
+            return result
         }
+    }
+
+    private fun getStringDigest(md: MessageDigest): String {
+        return DatatypeConverter.printHexBinary(md.digest()).uppercase(Locale.getDefault())
+    }
+
+    private fun detectHeaderLength(buffer: ByteArray): Int {
+        if (buffer.size < 16) {
+            return 0
+        }
+        var allMatch = true
+        (0..3).forEach { pos -> if (buffer[pos] != inesStart[pos]) allMatch = false }
+        return if (allMatch) 16 else 0
     }
 
 }

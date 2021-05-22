@@ -66,13 +66,15 @@ class RomProcessor(private val datStore: DatStore) {
     ): Boolean {
         val zipFile = romDir.resolve(zipName)
         Log.info("Processing zip file: %s", zipName)
-        val fs = FileSystems.newFileSystem(zipFile, ClassLoader.getSystemClassLoader())
-        val zipRomProcessor = RomProcessor(datStore)
-        for (rootDirectory in fs.rootDirectories) {
-            zipRomProcessor.processDir(rootDirectory)
-            zipRomProcessor.printStats()
+        FileSystems.newFileSystem(zipFile, ClassLoader.getSystemClassLoader()).use {
+            val zipRomProcessor = RomProcessor(datStore)
+            zipRomProcessor.renameEnabled = renameEnabled
+            for (rootDirectory in it.rootDirectories) {
+                zipRomProcessor.processDir(rootDirectory)
+                zipRomProcessor.printStats()
+            }
+            return !zipRomProcessor.matchedFiles.isEmpty()
         }
-        return false
     }
 
     private fun processRom(

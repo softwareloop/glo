@@ -24,9 +24,8 @@ class RomProcessor(private val datStore: DatStore) {
 
     var renameEnabled = false
 
-    private val matchedFiles: MutableList<String> = ArrayList()
+    private val matchedFiles: MutableMap<String, List<RomSummary>> = HashMap()
     private val unmatchedFiles: MutableList<String> = ArrayList()
-    private var nProcessedFiles = 0
     private var nRenamedFiles = 0
 
     //--------------------------------------------------------------------------
@@ -46,16 +45,16 @@ class RomProcessor(private val datStore: DatStore) {
         fileNames.sortWith { obj: String, str: String? -> obj.compareTo(str!!, ignoreCase = true) }
         for (fileName in fileNames) {
             val fileExtension = FilenameUtils.getExtension(fileName).lowercase()
-            val matched: Boolean
+            val matched: List<RomSummary>
             if ("zip".equals(fileExtension)) {
                 matched = processZip(romDir, fileName)
             } else {
                 matched = processRom(romDir, fileName)
             }
-            if (matched) {
-                matchedFiles.add(fileName)
-            } else {
+            if (matched.isEmpty()) {
                 unmatchedFiles.add(fileName)
+            } else {
+                matchedFiles[fileName] = matched
             }
         }
     }
@@ -63,25 +62,34 @@ class RomProcessor(private val datStore: DatStore) {
     private fun processZip(
         romDir: Path,
         zipName: String
-    ): Boolean {
+    ): List<RomSummary> {
         val zipFile = romDir.resolve(zipName)
         Log.info("Processing zip file: %s", zipName)
+        val zipRomProcessor = RomProcessor(datStore)
         FileSystems.newFileSystem(zipFile, ClassLoader.getSystemClassLoader()).use {
-            val zipRomProcessor = RomProcessor(datStore)
             zipRomProcessor.renameEnabled = renameEnabled
             for (rootDirectory in it.rootDirectories) {
                 zipRomProcessor.processDir(rootDirectory)
-                zipRomProcessor.printStats()
             }
-            return !zipRomProcessor.matchedFiles.isEmpty()
         }
+        val allRomSummaries = ArrayList<RomSummary>()
+        for (matchedFile in zipRomProcessor.matchedFiles) {
+            allRomSummaries.addAll(matchedFile.value)
+        }
+        if (renameEnabled && allRomSummaries.size == 1) {
+            val romSummary = allRomSummaries[0]
+            val romName = romSummary.romName
+            val baseName = FilenameUtils.getBaseName(romName)
+            val newZipName = "$baseName.zip"
+            rename(romDir, zipName, newZipName)
+        }
+        return allRomSummaries
     }
 
     private fun processRom(
         romDir: Path,
         fileName: String
-    ): Boolean {
-        nProcessedFiles++
+    ): List<RomSummary> {
         val romFile = romDir.resolve(fileName)
         val md5s = computeMd5s(romFile)
         var romSummaries: List<RomSummary>? = null
@@ -93,7 +101,7 @@ class RomProcessor(private val datStore: DatStore) {
         }
         if (romSummaries == null) {
             Log.debug("No match found")
-            return false
+            return Collections.emptyList()
         }
         if (renameEnabled) {
             val newFileNames: MutableSet<String> = HashSet()
@@ -103,14 +111,7 @@ class RomProcessor(private val datStore: DatStore) {
             }
             if (newFileNames.size == 1) {
                 val newFileName = newFileNames.iterator().next()
-                if (fileName == newFileName) {
-                    Log.debug("Name matches dat entry: %s", fileName)
-                } else {
-                    Log.info("Renaming %s -> %s", fileName, newFileName)
-                    val newRomFile = romDir.resolve(newFileName)
-                    Files.move(romFile, newRomFile, StandardCopyOption.REPLACE_EXISTING)
-                    nRenamedFiles++
-                }
+                rename(romDir, fileName, newFileName)
             } else {
                 if (newFileNames.contains(fileName)) {
                     Log.debug("Name matches dat entry: %s", fileName)
@@ -129,7 +130,23 @@ class RomProcessor(private val datStore: DatStore) {
                 Log.info("    %s [%s]", newFileName, romSummary.datName)
             }
         }
-        return true
+        return romSummaries
+    }
+
+    private fun rename(
+        romDir: Path,
+        fileName: String,
+        newFileName: String
+    ) {
+        if (fileName == newFileName) {
+            Log.debug("Name matches dat entry: %s", fileName)
+        } else {
+            Log.info("Renaming %s -> %s", fileName, newFileName)
+            val romFile = romDir.resolve(fileName)
+            val newRomFile = romDir.resolve(newFileName)
+            Files.move(romFile, newRomFile, StandardCopyOption.REPLACE_EXISTING)
+            nRenamedFiles++
+        }
     }
 
     fun printUnmatched() {
@@ -145,7 +162,7 @@ class RomProcessor(private val datStore: DatStore) {
 
     fun printStats() {
         Log.info("\nFile stats:")
-        Log.info("Processed: %s", nProcessedFiles)
+        Log.info("Processed: %s", matchedFiles.size + unmatchedFiles.size)
         Log.info("Matched  : %s", matchedFiles.size)
         Log.info("Unmatched: %s", unmatchedFiles.size)
         Log.info("Renamed  : %s", nRenamedFiles)

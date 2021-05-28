@@ -14,6 +14,7 @@ object Glo {
     const val HELP_OPTION = "help"
     const val VERBOSE_OPTION = "verbose"
     const val RENAME_OPTION = "rename"
+    const val UNZIP_OPTION = "unzip"
     const val DATDIR_OPTION = "datdir"
     const val DATDIR_ENV = "DATDIR"
 
@@ -21,6 +22,7 @@ object Glo {
         addOption(HELP_OPTION, "print this usage information")
         addOption(VERBOSE_OPTION, "be extra verbose")
         addOption(RENAME_OPTION, "rename roms to official name")
+        addOption(UNZIP_OPTION, "extract roms from zip files")
         val datdir = Option.builder(DATDIR_OPTION)
             .hasArg()
             .argName("DIR")
@@ -64,8 +66,12 @@ object Glo {
         Log.info("Loading dat files from: %s", datDir!!)
         datStore.loadDatDir(datDirPath)
         val romProcessor = RomProcessor(datStore)
+
         val renameEnabled = commandLine.hasOption(RENAME_OPTION)
         romProcessor.renameEnabled = renameEnabled
+
+        val unzipEnabled = commandLine.hasOption(UNZIP_OPTION)
+        romProcessor.unzipEnabled = unzipEnabled
 
         val args = commandLine.args
         if (args.isEmpty()) {

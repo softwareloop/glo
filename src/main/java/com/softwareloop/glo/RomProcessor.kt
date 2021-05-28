@@ -19,6 +19,10 @@ class RomProcessor(
 
     constructor(datStore: DatStore) : this(datStore, "")
 
+    //--------------------------------------------------------------------------
+    // Companion
+    //--------------------------------------------------------------------------
+
     companion object {
         val inesStart = byteArrayOf(0x4E, 0x45, 0x53, 0x1A)
     }
@@ -28,6 +32,7 @@ class RomProcessor(
     //--------------------------------------------------------------------------
 
     var renameEnabled = false
+    var unzipEnabled = false
 
     private val matchedFiles: MutableMap<String, List<RomSummary>> = HashMap()
     private val unmatchedFiles: MutableList<String> = ArrayList()
@@ -38,6 +43,13 @@ class RomProcessor(
     //--------------------------------------------------------------------------
 
     fun processDir(romDir: Path) {
+        processDir(romDir, emptyList())
+    }
+
+    fun processDir(
+        romDir: Path,
+        visitors: List<(Path, String) -> Void>
+    ) {
         val fileNames: MutableList<String> = ArrayList()
         Files.newDirectoryStream(romDir).use { stream ->
             for (romFile in stream) {
@@ -55,7 +67,7 @@ class RomProcessor(
             if ("zip".equals(fileExtension)) {
                 matched = processZip(romDir, fileName)
             } else {
-                matched = processRom(romDir, fileName)
+                matched = processRom(romDir, fileName, visitors)
             }
             if (matched.isEmpty()) {
                 unmatchedFiles.add(fileName)
@@ -97,7 +109,8 @@ class RomProcessor(
 
     private fun processRom(
         romDir: Path,
-        fileName: String
+        fileName: String,
+        visitors: List<(Path, String) -> Void>
     ): List<RomSummary> {
         val romFile = romDir.resolve(fileName)
         val md5s = computeMd5s(romFile)

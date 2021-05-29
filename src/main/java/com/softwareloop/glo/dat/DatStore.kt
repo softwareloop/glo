@@ -1,7 +1,7 @@
-package com.softwareloop.glo
+package com.softwareloop.glo.dat
 
-import com.softwareloop.glo.model.Datafile
-import com.softwareloop.glo.model.RomSummary
+import com.softwareloop.glo.Log
+import com.softwareloop.glo.dat.model.Datafile
 import org.apache.commons.io.FilenameUtils
 import org.xml.sax.InputSource
 import java.nio.charset.StandardCharsets
@@ -33,7 +33,7 @@ class DatStore {
     // Fields
     //--------------------------------------------------------------------------
 
-    val md5Map = HashMap<String, MutableList<RomSummary>>()
+    val md5Map = HashMap<String, RomSummary>()
 
     //--------------------------------------------------------------------------
     // Public methods
@@ -89,16 +89,16 @@ class DatStore {
                     Log.debug("md5 has invalid format, skipping")
                     continue
                 }
-                val romSummary = RomSummary(datName, romName)
-                val romSummaries = md5Map.computeIfAbsent(romMd5) { k: String? -> ArrayList() }
-                if (!romSummaries.contains(romSummary)) {
-                    romSummaries.add(romSummary)
+                val romEntry = RomEntry(datName, romName)
+                val romSummary = md5Map.computeIfAbsent(romMd5) { k: String? -> RomSummary() }
+                if (!romSummary.contains(romEntry)) {
+                    romSummary.add(romEntry)
                 }
             }
         }
     }
 
-    fun getRomSummaryByMd5(md5: String): List<RomSummary>? {
+    fun getRomSummaryByMd5(md5: String): RomSummary? {
         return md5Map[md5]
     }
 

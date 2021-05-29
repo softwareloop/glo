@@ -1,5 +1,6 @@
 package com.softwareloop.glo
 
+import com.softwareloop.glo.dat.DatStore
 import org.apache.commons.cli.*
 import org.apache.commons.lang3.StringUtils
 import java.nio.file.Files

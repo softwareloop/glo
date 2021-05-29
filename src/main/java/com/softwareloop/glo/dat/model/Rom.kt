@@ -1,4 +1,4 @@
-package com.softwareloop.glo.model
+package com.softwareloop.glo.dat.model
 
 import javax.xml.bind.annotation.XmlAccessType
 import javax.xml.bind.annotation.XmlAccessorType

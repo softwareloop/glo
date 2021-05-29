@@ -42,7 +42,7 @@ object Glo {
             val commandLine = parser.parse(options, args)
             run(commandLine)
         } catch (exp: ParseException) {
-            Log.info("Parsing failed.  Reason: {}", exp.message!!)
+            Log.info("Parsing failed.  Reason: %s", exp.message!!)
         }
     }
 

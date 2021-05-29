@@ -1,7 +1,6 @@
 package com.softwareloop.glo
 
 import com.softwareloop.glo.dat.DatStore
-import com.softwareloop.glo.dat.RomEntry
 import com.softwareloop.glo.dat.RomSummary
 import org.apache.commons.io.FilenameUtils
 import java.io.BufferedInputStream
@@ -45,13 +44,6 @@ class RomProcessor(
     //--------------------------------------------------------------------------
 
     fun processDir(romDir: Path) {
-        processDir(romDir, emptyList())
-    }
-
-    fun processDir(
-        romDir: Path,
-        visitors: List<(Path, String) -> Void>
-    ) {
         val fileNames: MutableList<String> = ArrayList()
         Files.newDirectoryStream(romDir).use { stream ->
             for (romFile in stream) {
@@ -69,7 +61,7 @@ class RomProcessor(
             if ("zip".equals(fileExtension)) {
                 matched = processZip(romDir, fileName)
             } else {
-                matched = processRom(romDir, fileName, visitors)
+                matched = processRom(romDir, fileName)
             }
             if (matched == null) {
                 unmatchedFiles.add(fileName)
@@ -100,10 +92,18 @@ class RomProcessor(
             return null
         }
         if (renameEnabled) {
-            rename(zipRomSummary, romDir, zipName) {
-                val romName = it.romName
-                val baseName = FilenameUtils.getBaseName(romName)
-                "$baseName.zip"
+            val zipBaseName = FilenameUtils.getBaseName(zipName)
+            if (zipRomSummary.containsRomBaseName(zipBaseName)) {
+                Log.debug("%s    No need to rename", indentation)
+            } else {
+                val commonName = zipRomSummary.getCommonName()
+                if (commonName == null) {
+                    Log.info("%s    Multiple matching rom names. Not renaming.", indentation)
+                } else {
+                    val baseName = FilenameUtils.getBaseName(commonName)
+                    val newZipName = "$baseName.zip"
+                    rename(romDir, zipName, newZipName)
+                }
             }
         }
         return zipRomSummary
@@ -111,8 +111,7 @@ class RomProcessor(
 
     private fun processRom(
         romDir: Path,
-        fileName: String,
-        visitors: List<(Path, String) -> Void>
+        fileName: String
     ): RomSummary? {
         val romFile = romDir.resolve(fileName)
         val md5s = computeMd5s(romFile)
@@ -132,7 +131,7 @@ class RomProcessor(
             Log.info("%s    %s [%s]", indentation, newFileName, romEntry.datName)
         }
         if (renameEnabled) {
-            rename(romSummary, romDir, fileName) { it.romName }
+            rename(romSummary, romDir, fileName)
         }
         return romSummary
     }
@@ -140,32 +139,18 @@ class RomProcessor(
     private fun rename(
         romSummary: RomSummary,
         romDir: Path,
-        fileName: String,
-        newFileNameFunction: (RomEntry) -> String
+        fileName: String
     ) {
-        val newFileNames = collectNewFileNames(romSummary, newFileNameFunction)
-        if (newFileNames.contains(fileName)) {
+        if (romSummary.containsRomName(fileName)) {
             Log.debug("%s    No need to rename", indentation)
         } else {
-            if (newFileNames.size == 1) {
-                val newFileName = newFileNames.iterator().next()
-                rename(romDir, fileName, newFileName)
-            } else {
+            val commonName = romSummary.getCommonName()
+            if (commonName == null) {
                 Log.info("%s    Multiple matching rom names. Not renaming.", indentation)
+            } else {
+                rename(romDir, fileName, commonName)
             }
         }
-    }
-
-    private fun collectNewFileNames(
-        romSummary: RomSummary,
-        newFileNameFunction: (RomEntry) -> String
-    ): Set<String> {
-        val newFileNames: MutableSet<String> = HashSet()
-        for (romEntry in romSummary.romEntries) {
-            val newFileName = newFileNameFunction(romEntry)
-            newFileNames.add(newFileName)
-        }
-        return newFileNames
     }
 
     private fun rename(

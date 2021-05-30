@@ -3,14 +3,10 @@ package com.softwareloop.glo
 import com.softwareloop.glo.dat.DatStore
 import com.softwareloop.glo.dat.RomSummary
 import org.apache.commons.io.FilenameUtils
-import java.io.BufferedInputStream
 import java.nio.file.FileSystems
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
-import java.security.MessageDigest
-import java.util.*
-import javax.xml.bind.DatatypeConverter
 
 
 class RomProcessor(
@@ -19,14 +15,6 @@ class RomProcessor(
 ) {
 
     constructor(datStore: DatStore) : this(datStore, "")
-
-    //--------------------------------------------------------------------------
-    // Companion
-    //--------------------------------------------------------------------------
-
-    companion object {
-        val inesStart = byteArrayOf(0x4E, 0x45, 0x53, 0x1A)
-    }
 
     //--------------------------------------------------------------------------
     // Properties
@@ -38,6 +26,7 @@ class RomProcessor(
     private val matchedFiles: MutableMap<String, RomSummary> = HashMap()
     private val unmatchedFiles: MutableList<String> = ArrayList()
     private var nRenamedFiles = 0
+    private var nUnzippedFiles = 0
 
     //--------------------------------------------------------------------------
     // Public methods
@@ -85,6 +74,7 @@ class RomProcessor(
                         val toPath = romDir.resolve(romName)
                         Log.info("%s    Extracting to: %s", indentation, romName)
                         Files.copy(fromPath, toPath, StandardCopyOption.REPLACE_EXISTING)
+                        nUnzippedFiles++
                     }
                 }
             }
@@ -108,7 +98,7 @@ class RomProcessor(
         fileName: String
     ) {
         val romFile = romDir.resolve(fileName)
-        val md5s = computeMd5s(romFile)
+        val md5s = Md5Processor.computeMd5s(romFile)
         var romSummary: RomSummary? = null
         for (md5 in md5s) {
             romSummary = datStore.getRomSummaryByMd5(md5)
@@ -183,44 +173,6 @@ class RomProcessor(
         Log.info("Matched  : %s", matchedFiles.size)
         Log.info("Unmatched: %s", unmatchedFiles.size)
         Log.info("Renamed  : %s", nRenamedFiles)
-    }
-
-    //--------------------------------------------------------------------------
-    // Private methods
-    //--------------------------------------------------------------------------
-
-    private fun computeMd5s(romFile: Path): List<String> {
-        val fullMd = MessageDigest.getInstance("MD5")
-        val headerlessMd = MessageDigest.getInstance("MD5")
-        val buffer = ByteArray(1024)
-        BufferedInputStream(Files.newInputStream(romFile)).use { inputStream ->
-            // read the header
-            var len = inputStream.read(buffer)
-            var headerLength = detectHeaderLength(buffer)
-            while (len > 0) {
-                fullMd.update(buffer, 0, len)
-                headerlessMd.update(buffer, headerLength, len - headerLength)
-                headerLength = 0
-                len = inputStream.read(buffer)
-            }
-            val result = ArrayList<String>()
-            result.add(getStringDigest(fullMd))
-            result.add(getStringDigest(headerlessMd))
-            return result
-        }
-    }
-
-    private fun getStringDigest(md: MessageDigest): String {
-        return DatatypeConverter.printHexBinary(md.digest()).uppercase(Locale.getDefault())
-    }
-
-    private fun detectHeaderLength(buffer: ByteArray): Int {
-        if (buffer.size < 16) {
-            return 0
-        }
-        var allMatch = true
-        (0..3).forEach { pos -> if (buffer[pos] != inesStart[pos]) allMatch = false }
-        return if (allMatch) 16 else 0
     }
 
 }

@@ -70,16 +70,24 @@ class RomProcessor(
         zipName: String
     ) {
         val zipFile = romDir.resolve(zipName)
-        val zipRomProcessor = RomProcessor(datStore, indentation + "    ")
-        FileSystems.newFileSystem(zipFile, ClassLoader.getSystemClassLoader()).use {
-            zipRomProcessor.renameEnabled = renameEnabled
-            for (rootDirectory in it.rootDirectories) {
-                zipRomProcessor.processDir(rootDirectory)
-            }
-        }
         val zipRomSummary = RomSummary()
-        for (matchedFile in zipRomProcessor.matchedFiles) {
-            zipRomSummary.addAll(matchedFile.value)
+        FileSystems.newFileSystem(zipFile, ClassLoader.getSystemClassLoader()).use {
+            for (rootDirectory in it.rootDirectories) {
+                val zipRomProcessor = RomProcessor(datStore, indentation + "    ")
+                zipRomProcessor.renameEnabled = renameEnabled
+                zipRomProcessor.processDir(rootDirectory)
+                for (matchedFile in zipRomProcessor.matchedFiles) {
+                    val romSummary = matchedFile.value
+                    zipRomSummary.addAll(romSummary)
+                    if (unzipEnabled) {
+                        val romName = matchedFile.key
+                        val fromPath = rootDirectory.resolve(romName)
+                        val toPath = romDir.resolve(romName)
+                        Log.info("%s    Extracting to: %s", indentation, romName)
+                        Files.copy(fromPath, toPath, StandardCopyOption.REPLACE_EXISTING)
+                    }
+                }
+            }
         }
         if (zipRomSummary.isEmpty()) {
             Log.debug("%s    No match found", indentation)

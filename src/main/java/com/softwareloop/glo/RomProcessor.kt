@@ -57,16 +57,10 @@ class RomProcessor(
         for (fileName in fileNames) {
             Log.info("%s%s", indentation, fileName)
             val fileExtension = FilenameUtils.getExtension(fileName).lowercase()
-            val matched: RomSummary?
             if ("zip".equals(fileExtension)) {
-                matched = processZip(romDir, fileName)
+                processZip(romDir, fileName)
             } else {
-                matched = processRom(romDir, fileName)
-            }
-            if (matched == null) {
-                unmatchedFiles.add(fileName)
-            } else {
-                matchedFiles[fileName] = matched
+                processRom(romDir, fileName)
             }
         }
     }
@@ -74,7 +68,7 @@ class RomProcessor(
     private fun processZip(
         romDir: Path,
         zipName: String
-    ): RomSummary? {
+    ) {
         val zipFile = romDir.resolve(zipName)
         val zipRomProcessor = RomProcessor(datStore, indentation + "    ")
         FileSystems.newFileSystem(zipFile, ClassLoader.getSystemClassLoader()).use {
@@ -89,21 +83,22 @@ class RomProcessor(
         }
         if (zipRomSummary.isEmpty()) {
             Log.debug("%s    No match found", indentation)
-            return null
+            unmatchedFiles.add(zipName)
+            return
         }
-        if (renameEnabled) {
+        val finalFileName = if (renameEnabled) {
             rename(zipRomSummary, romDir, zipName, true) { commonName ->
                 val baseName = FilenameUtils.getBaseName(commonName)
                 "$baseName.zip"
             }
-        }
-        return zipRomSummary
+        } else zipName
+        matchedFiles[finalFileName] = zipRomSummary
     }
 
     private fun processRom(
         romDir: Path,
         fileName: String
-    ): RomSummary? {
+    ) {
         val romFile = romDir.resolve(fileName)
         val md5s = computeMd5s(romFile)
         var romSummary: RomSummary? = null
@@ -115,16 +110,17 @@ class RomProcessor(
         }
         if (romSummary == null) {
             Log.debug("%s    No match found", indentation)
-            return null
+            unmatchedFiles.add(fileName)
+            return
         }
         for (romEntry in romSummary.romEntries) {
             val newFileName = romEntry.romName
             Log.info("%s    %s [%s]", indentation, newFileName, romEntry.datName)
         }
-        if (renameEnabled) {
+        val finalFileName = if (renameEnabled) {
             rename(romSummary, romDir, fileName, false) { s -> s }
-        }
-        return romSummary
+        } else fileName
+        matchedFiles[finalFileName] = romSummary
     }
 
     private fun rename(
@@ -133,16 +129,19 @@ class RomProcessor(
         fileName: String,
         ignoreExtension: Boolean,
         newFileNameSupplier: (String) -> String
-    ) {
+    ): String {
         if (romSummary.containsRomName(fileName, ignoreExtension)) {
             Log.debug("%s    No need to rename", indentation)
+            return fileName
         } else {
             val commonName = romSummary.getCommonName()
             if (commonName == null) {
                 Log.info("%s    Multiple matching rom names. Not renaming.", indentation)
+                return fileName
             } else {
                 val newFileName = newFileNameSupplier.invoke(commonName)
                 rename(romDir, fileName, newFileName)
+                return newFileName
             }
         }
     }

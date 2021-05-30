@@ -19,10 +19,11 @@ PATH=$PATH:/path/to/glo/bin
 
 ```
 usage: glo.sh [OPTION]... [ROMDIR]...
--datdir <DIR>   set the dat directory (overrides $DATDIR)
--help           print this usage information
--rename         rename roms to official name
--verbose        be extra verbose
+ -datdir <DIR>   set the dat directory (overrides $DATDIR)
+ -help           print this usage information
+ -rename         rename roms to official name
+ -unzip          extract roms from zip files
+ -verbose        be extra verbose
 ```
 
 ## Example
@@ -49,4 +50,10 @@ Rename your ROM files to their official names according to the DATs:
 
 ```
 glo.sh -rename path/to/your/roms
+```
+
+Extract single rom files from zip files
+
+```
+glo.sh -unzip path/to/your/roms
 ```

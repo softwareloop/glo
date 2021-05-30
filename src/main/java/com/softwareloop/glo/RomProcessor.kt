@@ -92,18 +92,9 @@ class RomProcessor(
             return null
         }
         if (renameEnabled) {
-            val zipBaseName = FilenameUtils.getBaseName(zipName)
-            if (zipRomSummary.containsRomBaseName(zipBaseName)) {
-                Log.debug("%s    No need to rename", indentation)
-            } else {
-                val commonName = zipRomSummary.getCommonName()
-                if (commonName == null) {
-                    Log.info("%s    Multiple matching rom names. Not renaming.", indentation)
-                } else {
-                    val baseName = FilenameUtils.getBaseName(commonName)
-                    val newZipName = "$baseName.zip"
-                    rename(romDir, zipName, newZipName)
-                }
+            rename(zipRomSummary, romDir, zipName, true) { commonName ->
+                val baseName = FilenameUtils.getBaseName(commonName)
+                "$baseName.zip"
             }
         }
         return zipRomSummary
@@ -131,7 +122,7 @@ class RomProcessor(
             Log.info("%s    %s [%s]", indentation, newFileName, romEntry.datName)
         }
         if (renameEnabled) {
-            rename(romSummary, romDir, fileName)
+            rename(romSummary, romDir, fileName, false) { s -> s }
         }
         return romSummary
     }
@@ -139,16 +130,19 @@ class RomProcessor(
     private fun rename(
         romSummary: RomSummary,
         romDir: Path,
-        fileName: String
+        fileName: String,
+        ignoreExtension: Boolean,
+        newFileNameSupplier: (String) -> String
     ) {
-        if (romSummary.containsRomName(fileName)) {
+        if (romSummary.containsRomName(fileName, ignoreExtension)) {
             Log.debug("%s    No need to rename", indentation)
         } else {
             val commonName = romSummary.getCommonName()
             if (commonName == null) {
                 Log.info("%s    Multiple matching rom names. Not renaming.", indentation)
             } else {
-                rename(romDir, fileName, commonName)
+                val newFileName = newFileNameSupplier.invoke(commonName)
+                rename(romDir, fileName, newFileName)
             }
         }
     }

@@ -30,21 +30,19 @@ class RomSummary {
         return if (uniqueNames.size == 1) uniqueNames.iterator().next() else null
     }
 
-    fun containsRomName(romName: String): Boolean {
+    fun containsRomName(fileName: String, ignoreExtension: Boolean = false): Boolean {
         for (romEntry in romEntries) {
-            if (romName == romEntry.romName) {
+            if (ignoreExtension) {
+                if (FilenameUtils.getBaseName(fileName) ==
+                    FilenameUtils.getBaseName(romEntry.romName)
+                ) {
+                    return true
+                }
+            } else if (fileName == romEntry.romName) {
                 return true
             }
         }
         return false
     }
 
-    fun containsRomBaseName(romBaseName: String): Boolean {
-        for (romEntry in romEntries) {
-            if (romBaseName == FilenameUtils.getBaseName(romEntry.romName)) {
-                return true
-            }
-        }
-        return false
-    }
 }

@@ -2,8 +2,8 @@ package com.softwareloop.glo.dat
 
 import com.softwareloop.glo.Log
 import com.softwareloop.glo.dat.model.Datafile
+import com.softwareloop.glo.util.getFilenameExtension
 import jakarta.xml.bind.JAXBContext
-import org.apache.commons.io.FilenameUtils
 import org.xml.sax.InputSource
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
@@ -45,7 +45,7 @@ class DatStore {
             for (datFile in stream) {
                 Log.debug("Reading: %s", datFile)
                 val fileName = datFile.fileName.toString()
-                val extension = FilenameUtils.getExtension(fileName)
+                val extension = fileName.getFilenameExtension()
                 if (Files.isRegularFile(datFile) && "dat".equals(extension, ignoreCase = true)) {
                     val datafile = loadDatFile(datFile)
                     add(datafile)

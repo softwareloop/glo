@@ -1,6 +1,6 @@
 package com.softwareloop.glo.dat
 
-import org.apache.commons.io.FilenameUtils
+import com.softwareloop.glo.util.getBaseFilename
 
 class RomSummary {
     val romEntries = ArrayList<RomEntry>()
@@ -33,9 +33,7 @@ class RomSummary {
     fun containsRomName(fileName: String, ignoreExtension: Boolean = false): Boolean {
         for (romEntry in romEntries) {
             if (ignoreExtension) {
-                if (FilenameUtils.getBaseName(fileName) ==
-                    FilenameUtils.getBaseName(romEntry.romName)
-                ) {
+                if (fileName.getBaseFilename() == romEntry.romName.getBaseFilename()) {
                     return true
                 }
             } else if (fileName == romEntry.romName) {

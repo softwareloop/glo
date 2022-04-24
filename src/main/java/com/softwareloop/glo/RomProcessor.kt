@@ -2,7 +2,8 @@ package com.softwareloop.glo
 
 import com.softwareloop.glo.dat.DatStore
 import com.softwareloop.glo.dat.RomSummary
-import org.apache.commons.io.FilenameUtils
+import com.softwareloop.glo.util.getBaseFilename
+import com.softwareloop.glo.util.getFilenameExtension
 import java.nio.file.FileSystems
 import java.nio.file.Files
 import java.nio.file.Path
@@ -11,10 +12,8 @@ import java.nio.file.StandardCopyOption
 
 class RomProcessor(
     val datStore: DatStore,
-    val indentation: String
+    val indentation: String = ""
 ) {
-
-    constructor(datStore: DatStore) : this(datStore, "")
 
     //--------------------------------------------------------------------------
     // Properties
@@ -45,7 +44,7 @@ class RomProcessor(
         fileNames.sortWith { obj: String, str: String? -> obj.compareTo(str!!, ignoreCase = true) }
         for (fileName in fileNames) {
             Log.info("%s%s", indentation, fileName)
-            val fileExtension = FilenameUtils.getExtension(fileName).lowercase()
+            val fileExtension = fileName.getFilenameExtension().lowercase()
             if ("zip".equals(fileExtension)) {
                 processZip(romDir, fileName)
             } else {
@@ -65,11 +64,9 @@ class RomProcessor(
                 val zipRomProcessor = RomProcessor(datStore, indentation + "    ")
                 zipRomProcessor.renameEnabled = renameEnabled
                 zipRomProcessor.processDir(rootDirectory)
-                for (matchedFile in zipRomProcessor.matchedFiles) {
-                    val romSummary = matchedFile.value
+                for ((romName, romSummary) in zipRomProcessor.matchedFiles) {
                     zipRomSummary.addAll(romSummary)
                     if (unzipEnabled) {
-                        val romName = matchedFile.key
                         val fromPath = rootDirectory.resolve(romName)
                         val toPath = romDir.resolve(romName)
                         Log.info("%s    Extracting to: %s", indentation, romName)
@@ -86,7 +83,7 @@ class RomProcessor(
         }
         val finalFileName = if (renameEnabled) {
             rename(zipRomSummary, romDir, zipName, true) { commonName ->
-                val baseName = FilenameUtils.getBaseName(commonName)
+                val baseName = commonName.getBaseFilename()
                 "$baseName.zip"
             }
         } else zipName
@@ -128,18 +125,18 @@ class RomProcessor(
         ignoreExtension: Boolean,
         newFileNameSupplier: (String) -> String
     ): String {
-        if (romSummary.containsRomName(fileName, ignoreExtension)) {
+        return if (romSummary.containsRomName(fileName, ignoreExtension)) {
             Log.debug("%s    No need to rename", indentation)
-            return fileName
+            fileName
         } else {
             val commonName = romSummary.getCommonName()
             if (commonName == null) {
                 Log.info("%s    Multiple matching rom names. Not renaming.", indentation)
-                return fileName
+                fileName
             } else {
                 val newFileName = newFileNameSupplier.invoke(commonName)
                 rename(romDir, fileName, newFileName)
-                return newFileName
+                newFileName
             }
         }
     }
@@ -168,11 +165,13 @@ class RomProcessor(
     }
 
     fun printStats() {
-        Log.info("\nFile stats:")
-        Log.info("Processed: %s", matchedFiles.size + unmatchedFiles.size)
-        Log.info("Matched  : %s", matchedFiles.size)
-        Log.info("Unmatched: %s", unmatchedFiles.size)
-        Log.info("Renamed  : %s", nRenamedFiles)
+        with(Log) {
+            info("\nFile stats:")
+            info("Processed: %s", matchedFiles.size + unmatchedFiles.size)
+            info("Matched  : %s", matchedFiles.size)
+            info("Unmatched: %s", unmatchedFiles.size)
+            info("Renamed  : %s", nRenamedFiles)
+        }
     }
 
 }

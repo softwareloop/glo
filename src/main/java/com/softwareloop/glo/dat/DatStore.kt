@@ -2,6 +2,7 @@ package com.softwareloop.glo.dat
 
 import com.softwareloop.glo.Log
 import com.softwareloop.glo.dat.model.Datafile
+import jakarta.xml.bind.JAXBContext
 import org.apache.commons.io.FilenameUtils
 import org.xml.sax.InputSource
 import java.nio.charset.StandardCharsets
@@ -9,7 +10,6 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.util.*
 import java.util.regex.Pattern
-import javax.xml.bind.JAXBContext
 import javax.xml.parsers.SAXParserFactory
 import javax.xml.transform.sax.SAXSource
 

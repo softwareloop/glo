@@ -1,11 +1,11 @@
 package com.softwareloop.glo
 
+import jakarta.xml.bind.DatatypeConverter
 import java.io.BufferedInputStream
 import java.nio.file.Files
 import java.nio.file.Path
 import java.security.MessageDigest
 import java.util.*
-import javax.xml.bind.DatatypeConverter
 
 object Md5Processor {
 

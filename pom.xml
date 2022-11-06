@@ -10,7 +10,7 @@
         <maven.compiler.release>11</maven.compiler.release>
         <build.plugins.plugin.version>3.1</build.plugins.plugin.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <kotlin.version>1.5.0</kotlin.version>
+        <kotlin.version>1.6.0</kotlin.version>
     </properties>
 
     <dependencies>
